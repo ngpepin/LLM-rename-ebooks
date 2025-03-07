@@ -1,0 +1,43 @@
+{
+  "docker": {
+    "mounts": {
+      "input": "input",
+      "output": "output",
+      "corrupt": "corrupt",
+      "pamphlets": "pamphlets",
+      "uncertain": "uncertain",
+      "failed": "failed"
+    },
+    "dirs": {
+      "input_home": "/my-input-home",
+      "input": "",
+      "output_home": "/my-output-home",
+      "output": "",
+      "corrupt": "/Corrupt",
+      "pamphlets": "/Pamphlets",
+      "uncertain": "/Uncertain",
+      "failed": "/Failed"
+    },
+    "image": "didc/ebook-tools:latest",
+    "dockerfile": "/home/npepin/Projects/book-renamer/Dockerfile",
+    "remove_container": true
+  },
+  "script_general": {
+    "verbose": false,
+    "keep_metadata": true,
+    "corruption_check_only": false,
+    "input_extensions": "^(7z|bz2|chm|arj|cab|gz|tgz|gzip|zip|rar|xz|tar|epub|docx|odt|ods|cbr|cbz|maff|iso)$",
+    "output_format": ""
+  },
+  "isbn": {
+    "metadata_fetch_order": "Goodreads,Amazon.com,Google,ISBNDB,WorldCat xISBN,OZON.ru",
+    "reorder_text_to_find_isbn": "true, 400, 50",
+    "organize_without_isbn": true,
+    "without-isbn-sources": "Goodreads,Amazon.com,Google"
+  },
+  "ocr": {
+    "enabled": true,
+    "lang": "eng",
+    "only_first_last_pages": "7,3"
+  }
+}
