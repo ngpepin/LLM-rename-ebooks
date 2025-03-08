@@ -64,7 +64,7 @@
 #       "failed": "/Failed"
 #     },
 #     "image": "didc/ebook-tools:latest",
-#     "dockerfile": "/home/npepin/Projects/book-renamer/Dockerfile",
+#     "dockerfile": "/home/npepin/Projects/rename-ebooks/Dockerfile",
 #     "remove_container": true
 #   },
 #   "script_general": {
@@ -96,7 +96,7 @@
 ARGUMENTS=("$@")
 
 # Change to     
-PROJECT_DIR="/home/npepin/Projects/book-renamer"
+PROJECT_DIR="/home/npepin/Projects/rename-ebooks"
 FIX_SCRIPT="$PROJECT_DIR/fix-matches.sh"
 CONFIG_FILE="$PROJECT_DIR/config.json"
 RET_DIR=$(pwd)

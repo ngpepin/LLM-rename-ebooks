@@ -19,7 +19,7 @@
       "failed": "/Failed"
     },
     "image": "didc/ebook-tools:latest",
-    "dockerfile": "/home/npepin/Projects/book-renamer/Dockerfile",
+    "dockerfile": "/home/npepin/Projects/rename-ebooks/Dockerfile",
     "remove_container": true
   },
   "script_general": {
