@@ -1,10 +1,12 @@
 #!/bin/bash
+DEBUG=true
+MAX_LENGTH=150 # Change this value to set a different max length for debug messages
 #
 # PURPOSE:
 #
-# Used in conjuntion with / is called by rename-ebooks.sh 
+# Used in conjuntion with / is called by rename-ebooks.sh
 #
-# - Fixes an issue with ebook-tools where the script creates a directory 
+# - Fixes an issue with ebook-tools where the script creates a directory
 #   for a matching book instead of properly renaming the source file.
 #   It will move the files to the root destination directory and rename them
 #   based on the directory name from which they were moved. Since the ebook-tools bug
@@ -45,10 +47,44 @@ if [ ! -d "$target_dir" ]; then
     exit 1
 fi
 
+# Define colour codes
+RESET="\e[0m"
+RED="\e[31m"
+GREEN="\e[32m"
+YELLOW="\e[33m"
+BLUE="\e[34m"
+
+message () {
+    if [ "$DEBUG" = true ]; then
+        local msg="$1"
+        local color_code="$RESET"
+        local trunc_length=$((MAX_LENGTH - 3))  # Reserve space for "..."
+
+        # If a second argument is provided, set the corresponding color
+        case "$2" in
+            red) color_code="$RED" ;;
+            green) color_code="$GREEN" ;;
+            yellow) color_code="$YELLOW" ;;
+            blue) color_code="$BLUE" ;;
+            *) color_code="$RESET" ;;  # Default to white (normal)
+        esac
+
+        # Truncate if message is too long
+        if [ ${#msg} -gt "$MAX_LENGTH" ]; then
+            msg="${msg:0:$trunc_length}..."
+        fi
+
+        # Print the message in the chosen color
+        echo -e "${color_code}${msg}${RESET}"
+    fi
+}
+
+
+
 # Function to determine file type based on actual structure
 determine_extension() {
     temp_dir=$(mktemp -d)
-    
+
     if pdftotext "$1" - &>/dev/null 2>&1; then
         echo "pdf"
     elif unzip -tq "$1" 2>/dev/null | grep -q "mimetypeapplication/epub+zip"; then
@@ -61,14 +97,14 @@ determine_extension() {
         # Try to determine file type using MIME info
         mime_type=$(file --mime-type -b "$1" 2>/dev/null)
         case "$mime_type" in
-            "application/pdf") echo "pdf";;
-            "application/epub+zip") echo "epub";;
-            "application/x-mobipocket-ebook"|"application/octet-stream") echo "mobi";;
-            "text/plain") echo "txt";;
-            *) echo "unknown";;
+        "application/pdf") echo "pdf" ;;
+        "application/epub+zip") echo "epub" ;;
+        "application/x-mobipocket-ebook" | "application/octet-stream") echo "mobi" ;;
+        "text/plain") echo "txt" ;;
+        *) echo "unknown" ;;
         esac
     fi
-    
+
     # Clean up temporary directory
     rm -rf "$temp_dir"
 }
@@ -79,36 +115,75 @@ get_unique_filename() {
     local ext="$2"
     local counter=1
     local new_name="$base.$ext"
-    
+
     # Ensure the extension is correctly applied without duplicate dots
     if [[ "$base" == *"."* ]]; then
         base="${base%.*}"
     fi
-    
+
     while [ -e "$target_dir/$new_name" ]; do
         new_name="${base}($counter).$ext"
         ((counter++))
     done
-    
+
     echo "$new_name"
 }
 
-# Recursively find and process all files, excluding .meta and .unknown
-find "$target_dir" -type f ! -name "*.meta" ! -name "*.unknown" | while read -r file; do
-    # shellcheck disable=SC2034
-    dir_name="$(dirname "$file")"
-    base_name="$(basename "$file")"
-    
-    # Strip any existing extension
-    stripped_name="${base_name%.*}"
-    
-    # Determine correct file extension
-    file_extension=$(determine_extension "$file")
-    
-    # Get a unique filename in case of conflict
-    new_filename=$(get_unique_filename "$stripped_name" "$file_extension")
-    
-    # Move and rename the file to the root directory
-    mv "$file" "$target_dir/$new_filename"
 
+# find all directories in the target directory (excluding files in target_dir)
+find "$target_dir" -mindepth 1 -maxdepth 1 -type d | while read -r dir; do
+    message "Processing directory:  $dir" "blue"
+
+    # Store matching files in an array
+    files=($(find "$dir" -type f ! -name "*.meta" ! -name "*.unknown"))
+
+    if [ ${#files[@]} -eq 0 ]; then
+    message "                        *** No matching files found in $dir" "yellow"
+        continue
+    fi
+
+    for file in "${files[@]}"; do
+    message "                        Processing file: $file" "green"
+
+        dir_name="$(dirname "$file")"
+        base_name="$(basename "$file")"
+        message "                           dir_name: $dir_name"
+        message "                           base_name: $base_name"
+
+        # Strip any existing extension
+        stripped_name="${base_name%.*}"
+
+        # Determine correct file extension
+        file_extension=$(determine_extension "$file")
+
+        # Get a unique filename in case of conflict
+        new_filename=$(get_unique_filename "$stripped_name" "$file_extension")
+        message "                           Original filename: $base_name"
+        message "                           File type: $file_extension"
+        message "                           New filename: $new_filename"
+
+        # Move and rename the file to the root directory
+        # mv "$file" "$target_dir/$new_filename"
+        if [ -e "$file" ]; then
+            mv "$file" "$target_dir/$new_filename"
+            # check if move succeeded and change message accordingly
+            if [ -e "$target_dir/$new_filename" ]; then
+                message "                           Moved and renamed $file to: $target_dir/$new_filename" "green"
+            else
+                message "                           Failed to move and rename $file to: $target_dir/$new_filename" "red"
+            fi
+        fi
+        meta_file="$dir_name/$stripped_name.meta"
+        if [ -e "$meta_file" ]; then
+            mv "$meta_file" "$target_dir/$new_filename.meta"
+            # check if move succeeded and change message accordingly
+            if [ -e "$target_dir/$new_filename.meta" ]; then
+                message "                           Moved and renamed $meta_file to: $target_dir/$new_filename.meta" "green"
+            else
+                message "                           Failed to move and rename $meta_file to: $target_dir/$new_filename.meta" "red"
+            fi
+        fi
+
+        message "------------------------------------------------------------------------------------------------------------------"
+    done
 done
