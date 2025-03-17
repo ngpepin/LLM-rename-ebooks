@@ -604,19 +604,26 @@ SCRIPT_OPTIONS+=" /$INPUT_MOUNT_POINT"
 # RUN DOCKER CONTAINER
 # ---------------------------------------------------------------------------------------------------------------------
 FULL_CMD="${DOCKER_CMD} organize-ebooks.sh${SCRIPT_OPTIONS}"
+DOCKER_OUTPUT_TMP=$(mktemp)
+DOCKER_OUTPUT="$OUTPUT_DIR/last-run.log"
 message "---------------------------------------------------------------------------------------------------------------------" "blue" true
 message "Running Docker '$CONTAINER_NAME'"
-message "   Configuration file:   $CONFIG_FILE"
-message "   Input directory:      $INPUT_DIR"
-message "   Output directory:     $OUTPUT_DIR"
+message "   Configuration file:    $CONFIG_FILE"
+message "   Input directory:       $INPUT_DIR"
+message "   Output directory:      $OUTPUT_DIR"
+message "   Docker output (tmp):   $DOCKER_OUTPUT_TMP"
+message "   Docker output (final): $DOCKER_OUTPUT"
 message ""
 if [ $DEBUG = true ]; then
     message "Command:"
     message "$FULL_CMD"
 fi
+FULL_CMD+=" 2>&1 | tee $DOCKER_OUTPUT_TMP"
 message "reset"
+
 ran_docker=true
-eval $FULL_CMD
+eval $FULL_CMD 
+mv -f "$DOCKER_OUTPUT_TMP" "$DOCKER_OUTPUT" >/dev/null 2>&1
 
 # =====================================================================================================================
 # PERFORM CLEANUP
