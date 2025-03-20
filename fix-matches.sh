@@ -1,7 +1,9 @@
 #!/bin/bash
-DEBUG=true
-MAX_LENGTH=150 # Change this value to set a different max length for debug messages
-#
+# shellcheck disable=SC2004
+# shellcheck disable=SC2010
+# shellcheck disable=SC2034
+# shellcheck disable=SC2086
+
 # PURPOSE:
 #
 # Used in conjuntion with / is called by rename-ebooks.sh
@@ -34,6 +36,9 @@ MAX_LENGTH=150 # Change this value to set a different max length for debug messa
 #   └── <file named ...
 #
 
+DEBUG=false
+MAX_LENGTH=130 # Change this value to set a different max length for debug messages
+
 if [ -z "$1" ]; then
     echo "Usage: $0 <directory_path>"
     exit 1
@@ -54,14 +59,18 @@ GREEN="\e[32m"
 YELLOW="\e[33m"
 BLUE="\e[34m"
 
-message() {
-    if [ "$DEBUG" = true ]; then
-        local msg="$1"
+_msg() {
+    local show=$1
+    local msg="$2"
+    local colour="$3"
+
+    if [ $show = true ]; then
+
         local color_code="$RESET"
         local trunc_length=$((MAX_LENGTH - 3)) # Reserve space for "..."
 
         # If a second argument is provided, set the corresponding color
-        case "$2" in
+        case "$colour" in
         red) color_code="$RED" ;;
         green) color_code="$GREEN" ;;
         yellow) color_code="$YELLOW" ;;
@@ -79,21 +88,34 @@ message() {
     fi
 }
 
+debug_msg() {
+    local msg="$1"
+    local colour="$2"
+    _msg "$DEBUG" "$msg" "$colour"
+}
+
+message() {
+    local msg="$1"
+    local colour="$2"
+    _msg false "$msg" "$colour"
+}
+
 # Function to determine file type based on actual structure
 determine_extension() {
+    local in_file="$1"
     temp_dir=$(mktemp -d)
 
-    if pdftotext "$1" - &>/dev/null 2>&1; then
+    if pdftotext "$in_file" - &>/dev/null 2>&1; then
         echo "pdf"
-    elif unzip -tq "$1" 2>/dev/null | grep -q "mimetypeapplication/epub+zip"; then
+    elif unzip -tq "$in_file" 2>/dev/null | grep -q "mimetypeapplication/epub+zip"; then
         echo "epub"
-    elif mobi_unpack "$1" "$temp_dir" &>/dev/null 2>&1; then
+    elif mobi_unpack "$in_file" "$temp_dir" &>/dev/null 2>&1; then
         echo "mobi"
-    elif file "$1" 2>/dev/null | grep -q "ASCII text\|UTF-8 Unicode text"; then
+    elif file "$in_file" 2>/dev/null | grep -q "ASCII text\|UTF-8 Unicode text"; then
         echo "txt"
     else
         # Try to determine file type using MIME info
-        mime_type=$(file --mime-type -b "$1" 2>/dev/null)
+        mime_type=$(file --mime-type -b "$in_file" 2>/dev/null)
         case "$mime_type" in
         "application/pdf") echo "pdf" ;;
         "application/epub+zip") echo "epub" ;;
@@ -107,88 +129,84 @@ determine_extension() {
     rm -rf "$temp_dir"
 }
 
-# Function to generate a unique filename if a conflict exists
 get_unique_filename() {
-    local base="$1"
-    local ext="$2"
-    local counter=1
-    local new_name="$base.$ext"
+    local filename="$1"
 
-    # Ensure the extension is correctly applied without duplicate dots
-    if [[ "$base" == *"."* ]]; then
-        base="${base%.*}"
+    local base_name="${filename%.*}"  # Remove the last extension
+    local extension="${filename##*.}" # Get the last extension
+    local counter=1
+    local new_filename="$filename"
+
+    # Check if the file already exists
+    if [[ -e "$filename" ]]; then
+        # Extract the true basename (before the first extension)
+        local true_base_name="${filename%%.*}"
+        local remaining_ext="${filename#*.}"
+
+        # Check if the true basename already contains a counter in the format (n)
+        if [[ "$true_base_name" =~ \((.*)\)$ ]]; then
+            # Extract the existing counter and increment it
+
+            counter=$((${BASH_REMATCH[1]} + 1))
+            true_base_name="${true_base_name%(*}" # Remove the existing counter
+        fi
+
+        # Construct the new filename with the incremented counter
+        new_filename="${true_base_name}(${counter}).${remaining_ext}"
+
+        # Recursively call the function to handle cases where the new filename also exists
+        new_filename=$(get_unique_filename "$new_filename")
     fi
 
-    while [ -e "$target_dir/$new_name" ]; do
-        new_name="${base}($counter).$ext"
-        ((counter++))
-    done
-
-    echo "$new_name"
+    echo "$new_filename"
 }
 
 # find all directories in the target directory (excluding files in target_dir)
 find "$target_dir" -mindepth 1 -maxdepth 1 -type d | while read -r dir; do
-    message "Processing directory:  $dir" "blue"
 
-    # Create an array of the chunked PDF filenames
-    mapfile -t file_array < <(ls "$dir" | sort -t'-' -k2,2n)
+    dir_no_path="${dir##*/}"
 
-    for i in "${!file_array[@]}"; do
-        file="${file_array[$i]}"
-        echo "$file"
-        extension="${file##*.}" 
-        if [[ "$extension" == "meta" || "$extension" == "epub" || "$extension" == "mobi" || "$extension" == "txt" ]]; then
-            files+=("$dir/$file")
+    # Skip if the directory is a special directory
+    if [[ "$dir_no_path" =~ ^(Pamphlets|Corrupt|Uncertain|Failed)$ ]]; then
+        debug_msg "Skipping directory:  $dir_no_path" "yellow"
+        continue
+    fi
+    message "Processing directory:  $dir_no_path" "blue"
+    # Check if there is an input directory
+    if [ -d "$dir/input" ]; then
+        input_dir="$dir/input"
+
+        mapfile -t file_array < <(ls "$input_dir" | grep -vE '\.meta$|\.unknown$')
+
+        # Check if the array is empty
+        if [ ${#file_array[@]} -eq 0 ]; then
+            debug_msg "No matching files found in $dir_no_path/input" "yellow"
+            continue
+        else
+            file=""
+            for i in "${!file_array[@]}"; do
+                file="${file_array[$i]}"
+                file_full_path="$target_dir/$dir_no_path/input/$file"
+                metafile_full_path="${file_full_path}.meta"
+                file_extension=$(determine_extension "$file_full_path")
+                if [ "$file_extension" != "unknown" ]; then
+                    break
+                fi
+            done
+            if [ -n "$file" ]; then
+                debug_msg "Found file $file of type $file_extension"
+                new_file_name="$target_dir/${dir_no_path}${file_extension}"
+                new_file_name="$(get_unique_filename "$new_file_name")"
+                new_meta_name="${new_file_name}.meta"
+                message "Renaming to $new_file_name" "green"
+                message "Renaming .meta file to $new_meta_name" "green"
+                mv -f "$file_full_path" "$new_file_name"
+                mv -f "$metafile_full_path" "$new_meta_name"
+                rm -rf "$dir" >/dev/null 2>&1
+                debug_msg "------------------------------------------------------------------------------------------------------------------"
+            else
+                debug_msg "No matching files found in $dir_no_path/input" "yellow"
+            fi
         fi
-    done
+    fi
 done
-
-# if [ ${#files[@]} -eq 0 ]; then
-# message "                        *** No matching files found in $dir" "yellow"
-#     continue
-# fi
-
-# for file in "${files[@]}"; do
-# message "                        Processing file: $file" "green"
-
-#     dir_name="$(dirname "$file")"
-#     base_name="$(basename "$file")"
-#     message "                           dir_name: $dir_name"
-#     message "                           base_name: $base_name"
-
-#     # Strip any existing extension
-#     stripped_name="${base_name%.*}"
-
-#     # Determine correct file extension
-#     file_extension=$(determine_extension "$file")
-
-#     # Get a unique filename in case of conflict
-#     new_filename=$(get_unique_filename "$stripped_name" "$file_extension")
-#     message "                           Original filename: $base_name"
-#     message "                           File type: $file_extension"
-#     message "                           New filename: $new_filename"
-
-# # Move and rename the file to the root directory
-# # mv "$file" "$target_dir/$new_filename"
-# if [ -e "$file" ]; then
-#     mv "$file" "$target_dir/$new_filename"
-#     # check if move succeeded and change message accordingly
-#     if [ -e "$target_dir/$new_filename" ]; then
-#         message "                           Moved and renamed $file to: $target_dir/$new_filename" "green"
-#     else
-#         message "                           Failed to move and rename $file to: $target_dir/$new_filename" "red"
-#     fi
-# fi
-# meta_file="$dir_name/$stripped_name.meta"
-# if [ -e "$meta_file" ]; then
-#     mv "$meta_file" "$target_dir/$new_filename.meta"
-#     # check if move succeeded and change message accordingly
-#     if [ -e "$target_dir/$new_filename.meta" ]; then
-#         message "                           Moved and renamed $meta_file to: $target_dir/$new_filename.meta" "green"
-#     else
-#         message "                           Failed to move and rename $meta_file to: $target_dir/$new_filename.meta" "red"
-#     fi
-# fi
-
-# message "------------------------------------------------------------------------------------------------------------------"
