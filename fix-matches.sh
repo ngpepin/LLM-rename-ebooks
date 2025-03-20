@@ -35,6 +35,21 @@
 #   └── <file named X >.meta
 #   └── <file named ...
 #
+# USAGE:
+#  ./fix-matches.sh <directory_path>
+#  <directory_path> : The path to the directory containing the directories created by ebook-tools
+#
+# EXAMPLE:
+#  ./fix-matches.sh /path/to/ebooks
+#
+# NOTE:
+#  - This script is intended to be run in the same environment as ebook-tools.
+#  - It requires the following tools to be installed:
+#    - pdftotext
+#    - unzip
+#    - mobi_unpack
+#    - file
+#
 
 DEBUG=false
 MAX_LENGTH=130 # Change this value to set a different max length for debug messages
@@ -91,14 +106,17 @@ _msg() {
 debug_msg() {
     local msg="$1"
     local colour="$2"
-    _msg "$DEBUG" "$msg" "$colour"
+    _msg $DEBUG "$msg" "$colour"
 }
 
 message() {
     local msg="$1"
     local colour="$2"
-    _msg false "$msg" "$colour"
+    _msg true "$msg" "$colour"
 }
+
+message "Fixes an issue with ebook-tools where the script creates a directory"
+message "for a matching book instead of properly renaming the source file"
 
 # Function to determine file type based on actual structure
 determine_extension() {
