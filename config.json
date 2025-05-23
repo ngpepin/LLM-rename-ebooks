@@ -19,24 +19,24 @@
       "failed": "/Failed"
     },
     "image": "didc/ebook-tools:latest",
-    "dockerfile": "/home/npepin/Projects/rename-ebooks/Dockerfile",
-    "remove_container": true
+    "dockerfile": "",
+    "remove_container": "true"
   },
   "script_general": {
-    "verbose": false,
-    "keep_metadata": true,
-    "corruption_check_only": false,
+    "verbose": "false",
+    "keep_metadata": "true",
+    "corruption_check_only": "false",
     "input_extensions": "^(7z|bz2|chm|arj|cab|gz|tgz|gzip|zip|rar|xz|tar|epub|docx|odt|ods|cbr|cbz|maff|iso)$",
     "output_format": ""
   },
   "isbn": {
     "metadata_fetch_order": "Goodreads,Amazon.com,Google,ISBNDB,WorldCat xISBN,OZON.ru",
     "reorder_text_to_find_isbn": "true, 400, 50",
-    "organize_without_isbn": true,
+    "organize_without_isbn": "true",
     "without-isbn-sources": "Goodreads,Amazon.com,Google"
   },
   "ocr": {
-    "enabled": true,
+    "enabled": "true",
     "lang": "eng",
     "only_first_last_pages": "7,3"
   }

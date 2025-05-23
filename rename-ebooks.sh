@@ -9,7 +9,7 @@
 #
 # See: https://github.com/na--/ebook-tools
 #
-# USAGE: 
+# USAGE:
 # rename-ebooks.sh [-c | --config <config_file>] [-i | --input <input_dir>] [-o | --output <output_dir>] [-f | --fresh] [-d | --debug] [-h | --help]
 #
 # Options:
@@ -23,23 +23,23 @@
 # DEPENDENCIES:
 #   - jq
 #   - docker
-# 
+#
 # Uses scripts:
 #   - fix-matches.sh
 #
-#     * The script fix-matches.sh is used to fix an issue with ebook-tools where organize-ebooks.sh and lib.sh  
-#       create a directory for a matching book instead of properly renaming the source file using the descriptive text. 
+#     * The script fix-matches.sh is used to fix an issue with ebook-tools where organize-ebooks.sh and lib.sh
+#       create a directory for a matching book instead of properly renaming the source file using the descriptive text.
 #     * The script moves the content and .meta files to the root destination directory and renames them based on the
 #       directory name from which they came. It also renames the ".meta" file created by ebook-tools.
-#     * Since the ebook-tools bug results in the source file extension being lost, this script determines 
-#       the file type (pdf, epub, mobi or txt) based on the actual structure of the file, and, failing that, its mimetype. 
+#     * Since the ebook-tools bug results in the source file extension being lost, this script determines
+#       the file type (pdf, epub, mobi or txt) based on the actual structure of the file, and, failing that, its mimetype.
 #       If the file type cannot be determined, the file is given an '.unknown' extension.
 #
 # CONFIGURATION:
-# 
+#
 #    - Expects the lightly modified ebook-tools scripts organize-ebooks.sh and lib.sh to be in the same directory
 #      as the script as they are bind-mounted into the Docker container.
-# 
+#
 #    - Uses a JSON configuration file to set the options for the script. The default configuration file is
 #      'config.json' in the same directory as the script. The configuration file is structured as follows:
 #
@@ -64,7 +64,7 @@
 #       "failed": "/Failed"
 #     },
 #     "image": "didc/ebook-tools:latest",
-#     "dockerfile": "/home/npepin/Projects/rename-ebooks/Dockerfile",
+#     "dockerfile": "...",
 #     "remove_container": true
 #   },
 #   "script_general": {
@@ -95,8 +95,14 @@
 # Capture CLI arguments
 ARGUMENTS=("$@")
 
-# Change to     
-PROJECT_DIR="/home/npepin/Projects/rename-ebooks"
+# Change to
+PROJECT_DIR="" # Sourced from rename-ebooks.conf
+OUTPUT_DIR_DEF=""
+
+# Source the configuration file
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/rename-ebooks.conf"
+
 FIX_SCRIPT="$PROJECT_DIR/fix-matches.sh"
 CONFIG_FILE="$PROJECT_DIR/config.json"
 RET_DIR=$(pwd)
@@ -234,59 +240,121 @@ INPUT_HOME_DIR=""
 OUTPUT_HOME_DIR=""
 NEW_CONFIG_FILE=""
 DEBUG=false
+single_dir_provided=false
 
-j=0
-skip=false
-for i in "${ARGUMENTS[@]}"; do
-    j=$((j + 1))
-    if [ $skip = true ]; then
-        skip=false
-    else
-        case $i in
-        -d | --debug)
-            DEBUG=true
-            shift
-            ;;
-        -f | --fresh)
-            RE_DOWNLOAD_IMAGE=true
-            shift
-            ;;
-        -h | --help)
-            message "Usage: $0 [-c | --config <config_file>] [-i | --input <input_dir>] [-o | --output <output_dir>] [-f | --fresh] [-d | --debug] [-h | --help]" "blue" true
-            message "Options:"
-            message "  -c, --config        Specify the configuration file"
-            message "  -i, --input         Specify the input directory"
-            message "  -o, --output        Specify the output directory"
-            message "  -f, --fresh         Re-download the Docker image"
-            message "  -d, --debug         Run in debug mode"
-            message "  -h, --help          Display this help message" "reset"
-            exit 0
-            ;;
-        -c | --config)
-            NEW_CONFIG_FILE="${ARGUMENTS[j]}"
-            skip=true
-            ;;
-        -i | --input)
-            INPUT_HOME_DIR="${ARGUMENTS[j]}"
-            skip=true
-            ;;
-        -o | --output)
-            OUTPUT_HOME_DIR="${ARGUMENTS[j]}"
-            skip=true
-            ;;
-        *)
-            # unknown option
-            ;;
-        esac
+# =====================================================================================================================
+# The following:
+#
+# 1. Checks the number of arguments passed to the script:
+#    - If only one argument is provided, it is assumed to be the input directory.
+#    - If the argument is ".", the current working directory is used as the input directory.
+# 2. Verifies the existence of the input directory:
+#    - If the input directory does not exist, it constructs an output directory path
+#      by appending "/output" to the parent directory of the input directory.
+# 3. Ensures the output directory exists:
+#    - If the output directory does not exist, it creates the directory using `sudo mkdir -p`.
+# 4. Sets a flag (`single_dir_provided`) to indicate that only a single directory was provided.
+#
+# If multiple arguments have been provided or the single directory flag is not set, the script enters a loop
+# to parse the command line arguments:
+#
+# Options:
+#   -d, --debug         Enable debug mode for detailed logging.
+#   -f, --fresh         Re-download the Docker image used by the script.
+#   -h, --help          Display usage information and exit.
+#   -c, --config        Specify the path to a custom configuration file.
+#   -i, --input         Specify the input directory containing files to process.
+#   -o, --output        Specify the output directory for processed files.
+# =====================================================================================================================
+
+if [ "$#" -eq 1 ]; then
+    # check if first character is '-'
+    only_arg="$1"
+
+    if [[ "$only_arg" != -* ]]; then
+
+        message "Only one argument provided, it will be assumed to be the input directory." "blue"
+
+        if [ "$only_arg" = "." ]; then
+            INPUT_HOME_DIR="$(pwd)"
+        else
+            # determine the real path of the input directory
+            INPUT_HOME_DIR="$(realpath "$only_arg")"
+        fi
+
+        INPUT_HOME_DIR="${INPUT_HOME_DIR%/}"
+
+        # check that the input directory exists
+        if [ -d "$INPUT_HOME_DIR" ]; then
+            OUTPUT_HOME_DIR="$INPUT_HOME_DIR/output"
+
+            # check that the output directory exists
+            if [ ! -d "$OUTPUT_HOME_DIR" ]; then
+                sudo mkdir -p "$OUTPUT_HOME_DIR" >/dev/null 2>&1
+            fi
+
+            single_dir_provided=true
+            message "Output directory: $OUTPUT_HOME_DIR" "blue"
+        else
+            message "Input directory does not exist: $INPUT_HOME_DIR" "yellow"
+        fi
     fi
-done
+fi
 
-if [ "$NEW_CONFIG_FILE" != "" ]; then
-    if [ ! -d "$NEW_CONFIG_FILE" ]; then
-        message "Configuration file does not exist, reverting to default: $CONFIG_FILE" "yellow"
+if [ "$single_dir_provided" = false ]; then
+    j=0
+    skip=false
+    for i in "${ARGUMENTS[@]}"; do
+        j=$((j + 1))
+        if [ $skip = true ]; then
+            skip=false
+        else
+            case $i in
+            -d | --debug)
+                DEBUG=true
+                shift
+                ;;
+            -f | --fresh)
+                RE_DOWNLOAD_IMAGE=true
+                shift
+                ;;
+            -h | --help)
+                message "Usage: $0 [-c | --config <config_file>] [-i | --input <input_dir>] [-o | --output <output_dir>] [-f | --fresh] [-d | --debug] [-h | --help]" "blue" true
+                message "Options:"
+                message "  -c, --config        Specify the configuration file"
+                message "  -i, --input         Specify the input directory"
+                message "  -o, --output        Specify the output directory"
+                message "  -f, --fresh         Re-download the Docker image"
+                message "  -d, --debug         Run in debug mode"
+                message "  -h, --help          Display this help message" "reset"
+                exit 0
+                ;;
+            -c | --config)
+                NEW_CONFIG_FILE="${ARGUMENTS[j]}"
+                skip=true
+                ;;
+            -i | --input)
+                INPUT_HOME_DIR="${ARGUMENTS[j]}"
+                skip=true
+                ;;
+            -o | --output)
+                OUTPUT_HOME_DIR="${ARGUMENTS[j]}"
+                skip=true
+                ;;
+            *)
+                # unknown option
+                ;;
+            esac
+        fi
+    done
 
-    else
-        CONFIG_FILE="$NEW_CONFIG_FILE"
+    if [ "$NEW_CONFIG_FILE" != "" ]; then
+        if [ ! -d "$NEW_CONFIG_FILE" ]; then
+            message "Configuration file does not exist, reverting to default: $CONFIG_FILE" "yellow"
+
+        else
+            CONFIG_FILE="$NEW_CONFIG_FILE"
+        fi
     fi
 fi
 
@@ -324,14 +392,14 @@ cleanup_docker() {
 # Function to cleanup and exit
 # shellcheck disable=SC2317
 cleanup() {
-    message "Script interupted." "red"
+    #  message "Script interupted." "red"
 
     if [ $ran_docker = true ]; then
-        message "Cleaning up docker artefacts before quitting..." "red"
+        #      message "Cleaning up docker artefacts before quitting..." "red"
         cleanup_docker
     fi
-    message "Quitting..." "red"
-    message "reset"
+    # message "Quitting..." "red"
+    # message "reset"
     exit 1
 }
 
@@ -347,6 +415,9 @@ set_config_tree_pos ".docker"
 DOCKER_IMAGE=$(get_config_value ".image")
 REMOVE_CONTAINER=$(get_config_value ".remove_container")
 DOCKER_FILE_PATH=$(get_config_value ".dockerfile")
+if [ -z "$DOCKER_FILE_PATH" ]; then
+    DOCKER_FILE_PATH="$DOCKERFILE_PATH_DEF"
+fi
 # ---------------------------------------------------------------------------------------------------------------------
 # Mount points
 # ---------------------------------------------------------------------------------------------------------------------
@@ -363,6 +434,9 @@ PAMPHLETS_MOUNT_POINT=$(get_config_value ".pamphlets")
 set_config_tree_pos ".docker.dirs"
 INPUT_DIR="$INPUT_HOME_DIR$(get_config_value ".input")"
 OUTPUT_DIR="$OUTPUT_HOME_DIR$(get_config_value ".output")"
+if [ -z "$OUTPUT_DIR" ]; then
+    OUTPUT_DIR="$OUTPUT_DIR_DEF"
+fi
 CORRUPT_DIR="$OUTPUT_HOME_DIR$(get_config_value ".corrupt")"
 FAILED_DIR="$OUTPUT_HOME_DIR$(get_config_value ".failed")"
 UNCERTAIN_DIR="$OUTPUT_HOME_DIR$(get_config_value ".uncertain")"
@@ -528,7 +602,7 @@ DOCKER_CMD+=" -v $PROJECT_DIR/organize-ebooks.sh:/ebook-tools/organize-ebooks.sh
 DOCKER_CMD+=" ebooktools/scripts:latest"
 
 # =====================================================================================================================
-# SRIPT OPTIONS for organize-ebooks.sh
+# SCRIPT OPTIONS for organize-ebooks.sh
 # ---------------------------------------------------------------------------------------------------------------------
 # Volume Options
 # ---------------------------------------------------------------------------------------------------------------------
@@ -622,7 +696,7 @@ FULL_CMD+=" 2>&1 | tee $DOCKER_OUTPUT_TMP"
 message "reset"
 
 ran_docker=true
-eval $FULL_CMD 
+eval $FULL_CMD
 mv -f "$DOCKER_OUTPUT_TMP" "$DOCKER_OUTPUT" >/dev/null 2>&1
 
 # =====================================================================================================================
@@ -641,4 +715,3 @@ message "-----------------------------------------------------------------------
 cd "$RET_DIR" || exit >/dev/null 2>&1
 message "All done." "green" false
 message "reset"
-

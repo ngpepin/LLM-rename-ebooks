@@ -1,5 +1,44 @@
 #!/bin/bash
 
+# fix-extensions.sh
+# This script processes files in a specified directory, determines their correct file extensions based on their content,
+# and renames them accordingly. It ensures that files are uniquely named to avoid conflicts and moves them to the target directory.
+
+# Usage:
+#   ./fix-extensions.sh <directory_path>
+#   - <directory_path>: The path to the directory containing the files to process.
+
+# Features:
+# 1. Validates the input directory:
+#    - Ensures a directory path is provided as an argument.
+#    - Verifies that the provided path is a valid directory.
+
+# 2. Determines the correct file extension:
+#    - Uses tools like `pdftotext`, `unzip`, `mobi_unpack`, and `file` to identify the file type.
+#    - Falls back to MIME type detection if necessary.
+#    - Supports the following file types:
+#      - PDF (.pdf)
+#      - EPUB (.epub)
+#      - MOBI (.mobi)
+#      - Plain text (.txt)
+#      - Unknown files are labeled as "unknown".
+
+# 3. Handles filename conflicts:
+#    - Generates unique filenames by appending a counter (e.g., `file(1).ext`) if a file with the same name already exists.
+
+# 4. Processes files recursively:
+#    - Excludes files with extensions `.meta` and `.unknown`.
+#    - Moves and renames files to the root of the target directory.
+
+# Dependencies:
+# - `pdftotext`: For detecting PDF files.
+# - `unzip`: For detecting EPUB files.
+# - `mobi_unpack`: For detecting MOBI files.
+# - `file`: For MIME type detection.
+
+# Notes:
+# - Temporary directories are created and cleaned up during processing.
+# - The script outputs detailed logs for each file, including its original name, detected type, and new name.
 # Ensure a directory is provided
 if [ -z "$1" ]; then
     echo "Usage: $0 <directory_path>"
