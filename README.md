@@ -5,6 +5,7 @@
 This project builds on [ebook-tools](https://github.com/na--/ebook-tools) and provides **two distinct and stand-alone approaches** for renaming and organizing ebooks:
 
 1. **Metadata-Based Renaming**: Utilizes traditional metadata extraction from ebook files (such as title, author, ISBN) via `ebook-tools`. This method is effective for well-formatted files with embedded or inferable metadata.
+
 2. **LLM-Based Renaming**: Leverages a Large Language Model (LLM) to analyze ebook content and generate context-aware filenames. Ideal for ebooks with poor or missing metadata.
 
 Each method has its own script and configuration, and they can be used independently based on the nature of your ebook collection.
