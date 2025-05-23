@@ -2,6 +2,17 @@
 
 ## Overview
 
+This project builds on [ebook-tools](https://github.com/na--/ebook-tools) and provides **two distinct and stand-alone approaches** for renaming and organizing ebooks:
+
+1. **Metadata-Based Renaming**: Utilizes traditional metadata extraction from ebook files (such as title, author, ISBN) via `ebook-tools`. This method is effective for well-formatted files with embedded or inferable metadata.
+2. **LLM-Based Renaming**: Leverages a Large Language Model (LLM) to analyze ebook content and generate context-aware filenames. Ideal for ebooks with poor or missing metadata.
+
+Each method has its own script and configuration, and they can be used independently based on the nature of your ebook collection.
+
+
+1. **Metadata-Based Renaming** (default) using traditional metadata extraction tools.
+2. **LLM-Based Renaming** using a Large Language Model to infer filenames from content.
+
 This project builds on [ebook-tools](https://github.com/na--/ebook-tools) and extends its functionality, encapsulates it and allow complex [ebook-tools] options to be captured via a JSON configuration file for simplified CLI invocation. It has an additional script for renaming, organizing, and correcting issues with ebook files caused by apparent [ebook-tools] bug(s). It uses the updated / forked Docker image `didc/ebook-tools:latest`. It was tested on Ubuntu.
 
 The scripts include:
@@ -39,23 +50,38 @@ The provided `Dockerfile` creates directories that are bind-mounted to the host 
    docker pull didc/ebook-tools:latest
    ```
 
+
 ## Usage
 
-### Renaming and Organizing Ebooks
+### 1. Metadata-Based Renaming
 
-To rename ebooks and organize them based on metadata:
-```sh
+This is the default and well-established method based on extracting embedded ebook metadata.
+
+```bash
 ./rename-ebooks.sh [OPTIONS] -i /path/to/input -o /path/to/output
 ```
 
-Options:
+**Options**:
 - `-c, --config <file>`: Use a custom JSON config file.
-- `-i, --input <dir>`: Specify the input directory.
-- `-o, --output <dir>`: Specify the output directory.
+- `-i, --input <dir>`: Input directory.
+- `-o, --output <dir>`: Output directory.
 - `-f, --fresh`: Redownload the Docker image.
 - `-d, --debug`: Enable debug mode.
 - `-h, --help`: Show help.
 
+### 2. LLM-Based Renaming
+
+A newer approach that uses an LLM to understand ebook content and generate meaningful filenames.
+
+```bash
+./rename-using-llm.sh -i /path/to/input -o /path/to/output -c rename-using-llm.conf
+```
+
+**Configuration File (`rename-using-llm.conf`)**:
+- `PROJ_DIR`: Path to the project.
+- `API_ENDPOINT`: URL to the LLM chat completion endpoint (e.g., `http://localhost:4141/v1/chat/completions`).
+
+This method is particularly useful for ebooks with ambiguous or no metadata.
 ### Fixing Matches
 
 If ebooks are placed in incorrect directories (due to an `ebook-tools` issue), the main script will run (or you can manually run):
@@ -94,7 +120,7 @@ The project uses a `config.json` file to define how books are processed. Below i
       "failed": "/Failed"
     },
     "image": "didc/ebook-tools:latest",
-    "dockerfile": "/home/npepin/Projects/book-renamer/Dockerfile",
+    "dockerfile": "",
     "remove_container": true
   },
   "script_general": {
@@ -134,4 +160,3 @@ Contributions are welcome! Please open an issue or submit a pull request with im
 ## License
 
 This project is licensed under the MIT License. See `LICENSE` if included for additional details.
-

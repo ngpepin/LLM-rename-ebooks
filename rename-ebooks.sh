@@ -95,6 +95,11 @@
 # Capture CLI arguments
 ARGUMENTS=("$@")
 
+if [[ "$#" -eq 0 ]]; then
+    message "No arguments provided. Use -h or --help for usage information." "red"
+    exit 1
+fi
+
 # Change to
 PROJECT_DIR="" # Sourced from rename-ebooks.conf
 OUTPUT_DIR_DEF=""
