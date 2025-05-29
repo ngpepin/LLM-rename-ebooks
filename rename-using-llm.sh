@@ -30,25 +30,26 @@
 # - For large collections of books, the script may take time depending on API response times.
 #######################################################################################################
 
-PROJ_DIR=""             # Replaced with project directory sourced from rename-using-llm.conf
-API_ENDPOINT=""         # Replaced with API endpoint sourced from rename-using-llm.conf
+PROJ_DIR=""     # Replaced with project directory sourced from rename-using-llm.conf
+API_ENDPOINT="" # Replaced with API endpoint sourced from rename-using-llm.conf
+MODEL=""        # Model to use for LLM API requests, e.g., gpt-4o (may need to use gpt-4)
 
 # Source the configuration file
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/rename-using-llm.conf"
 
-INPUT_DIR="$1"                                           # Directory containing the book files
+INPUT_DIR="$1" # Directory containing the book files
 LOG_FILE="$PROJ_DIR/logs/rename_books_$$"
 LOG_FILE+="_${CURRENT_TIME}.log" # Log file for storing the output
 MAX_RETRIES=1                    # Maximum number of retries for API requests
 # RETRY_DELAY=4                    # Delay between retries in seconds
-OUTPUT_SUBDIR="Renamed"          # Directory to store renamed files
-FAILED_SUBDIR="Failed"          # Directory to store renamed files
+OUTPUT_SUBDIR="Renamed" # Directory to store renamed files
+FAILED_SUBDIR="Failed"  # Directory to store renamed files
 
 ##### NO CHANGES REQUIRED BELOW THIS LINE #####
 
 # capture current date time as YYYMMDDHHMMSS
-CURRENT_TIME=$(date +"%Y%m%d%H%M%S") 
+CURRENT_TIME=$(date +"%Y%m%d%H%M%S")
 
 # Colours
 NC='\033[0m'
@@ -86,24 +87,24 @@ fi
 
 # Global variables for timing
 TIME_START=0
-TIME_TOTAL=0  # Cumulative seconds (float)
+TIME_TOTAL=0 # Cumulative seconds (float)
 
 time_start() {
-    TIME_START=$(date +%s.%4N)  # Capture start time with 4 decimal places
+    TIME_START=$(date +%s.%4N) # Capture start time with 4 decimal places
 }
 
 ###############
-# This function, time_stop, calculates and logs the elapsed time since a 
+# This function, time_stop, calculates and logs the elapsed time since a
 # predefined start time (TIME_START) and updates the total elapsed time (TIME_TOTAL).
-# 
+#
 # Steps performed:
 # 1. Captures the current time in seconds with millisecond precision.
 # 2. Computes the elapsed time since TIME_START using bc for floating-point arithmetic.
 # 3. Updates the cumulative total elapsed time (TIME_TOTAL).
 # 4. Converts the total elapsed time into minutes and seconds format.
-# 5. Logs the elapsed time for the current operation and the cumulative total time 
+# 5. Logs the elapsed time for the current operation and the cumulative total time
 #    in MM:SS format to both the console and a log file (LOG_FILE).
-# 
+#
 # Variables:
 # - TIME_START: The start time of the operation (should be set before calling this function).
 # - TIME_TOTAL: The cumulative total elapsed time (should be initialized before calling this function).
@@ -111,18 +112,18 @@ time_start() {
 ###############
 
 time_stop() {
-   
+
     local end_time=$(date +%s.%4N)
     local elapsed=$(echo "$end_time - $TIME_START" | bc)
-    
+
     # Update total time
     TIME_TOTAL=$(echo "$TIME_TOTAL + $elapsed" | bc)
-    
+
     # Convert total to MM:SS
     local total_seconds=$(printf "%.0f" "$TIME_TOTAL")
     local minutes=$((total_seconds / 60))
     local seconds=$((total_seconds % 60))
-    
+
     # Print results
     printf "API Usage:  Elapsed %.4fs    Total (mins) %02d:%02d\n" "$elapsed" "$minutes" "$seconds" | tee -a "$LOG_FILE"
 }
@@ -236,7 +237,7 @@ echo "Testing API connection..." | tee -a "$LOG_FILE"
 TEST_RESPONSE=$(curl -s -X POST "$API_ENDPOINT" \
     -H "Content-Type: application/json" \
     -d '{
-        "model": "gpt-4o",
+        "model": "'"$MODEL"'",
         "messages": [
             {"role": "system", "content": "Test connection."},
             {"role": "user", "content": "Hello"}
@@ -267,7 +268,7 @@ echo "Failed match directory: $failed_dir" | tee -a "$LOG_FILE"
 find "$INPUT_DIR" -type f \( -name "*.pdf" -o -name "*.epub" -o -name "*.chm" -o -name "*.mobi" \) | while IFS= read -r file; do
 
     # Skip files in Renamed/ subdirectory
-    
+
     rel_path="${file#$INPUT_DIR}"
     rel_path="${rel_path#/}" # Remove leading slash if present
     if [[ "$rel_path" != "$OUTPUT_SUBDIR/"* ]] && [[ "$rel_path" != "$FAILED_SUBDIR/"* ]]; then
@@ -343,7 +344,7 @@ find "$INPUT_DIR" -type f \( -name "*.pdf" -o -name "*.epub" -o -name "*.chm" -o
             for ((retry = 1; retry <= MAX_RETRIES; retry++)); do
 
                 ###############
-                # The following interacts with an API (OpenAI API based model) to extract and format metadata 
+                # The following interacts with an API (OpenAI API based model) to extract and format metadata
                 # for eBooks based on provided text. The script performs the following steps:
                 #
                 # 1. Constructs a cURL command to send a POST request to the API endpoint.
@@ -382,7 +383,7 @@ find "$INPUT_DIR" -type f \( -name "*.pdf" -o -name "*.epub" -o -name "*.chm" -o
                 cmd='curl -s -X POST '
                 cmd+="$API_ENDPOINT "
                 cmd+='-H "Content-Type: application/json" '
-                cmd+="-d '{ \"model\": \"gpt-4\", \"messages\": [{\"role\": \"system\", \"content\": "
+                cmd+="-d '{ \"model\": \"$MODEL\", \"messages\": [{\"role\": \"system\", \"content\": "
                 cmd+="\"You are a metadata extractor. Return ONLY the formatted book details.\""
                 cmd+='},{ "role": "user", "content": "Extract the book title, volume(s), author(s), publication year, and ISBN (if available) from the following text:\n\"'
                 cmd+="$extracted_text"
@@ -425,7 +426,7 @@ find "$INPUT_DIR" -type f \( -name "*.pdf" -o -name "*.epub" -o -name "*.chm" -o
                         if good_response "$new_name"; then
                             to_skip=false
                             break
-                        #else
+                            #else
                             #echo -e "${BRED}SKIPPING: Invalid response on attempt $retry.${NC}" >>"$LOG_FILE"
                         #    sleep $RETRY_DELAY
                         fi
