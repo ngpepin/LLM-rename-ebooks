@@ -2,6 +2,8 @@
 # shellcheck disable=SC2086
 # shellcheck disable=SC2034
 #
+# rename-ebooks.sh
+#
 # PURPOSE:
 # This script renames and organizes ebooks in a directory. It uses the Docker image 'didc/ebook-tools:latest' to
 # perform the operations (a fork of Ned Andreev's excellent ebook-tools). The script will build the Docker image if it does not exist, and then run the container
