@@ -74,13 +74,30 @@ This is the default and well-established method based on extracting embedded ebo
 
 A newer approach that uses an LLM to understand ebook content and generate meaningful filenames.
 
+#### Option A: Bash Script (Original)
+
 ```bash
 ./rename-using-llm.sh -i /path/to/input -o /path/to/output -c rename-using-llm.conf
 ```
 
+#### Option B: Python/LangChain Implementation (Recommended)
+
+```bash
+./rename-using-llm-langchain.py -i /path/to/input -o /path/to/output -c rename-using-llm.conf
+```
+
+The LangChain implementation provides:
+- Better structured output parsing with Pydantic models
+- Improved error handling and retry logic
+- Cleaner, more maintainable code
+- Easier extensibility for future features
+
+See [README-LANGCHAIN.md](README-LANGCHAIN.md) for detailed documentation.
+
 **Configuration File (`rename-using-llm.conf`)**:
 - `PROJ_DIR`: Path to the project.
 - `API_ENDPOINT`: URL to the LLM chat completion endpoint (e.g., `http://localhost:4141/v1/chat/completions`).
+- `MODEL`: Model name (e.g., `gpt-4.1`, `gpt-4o`)
 
 This method is particularly useful for ebooks with ambiguous or no metadata.
 ### Fixing Matches

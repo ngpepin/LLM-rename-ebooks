@@ -45,6 +45,7 @@ MAX_RETRIES=1                    # Maximum number of retries for API requests
 # RETRY_DELAY=4                    # Delay between retries in seconds
 OUTPUT_SUBDIR="Renamed" # Directory to store renamed files
 FAILED_SUBDIR="Failed"  # Directory to store renamed files
+EXTRACT_SENT_TO_LLM_LENGTH=10000 # Number of lines to extract from the text file for LLM processing
 
 ##### NO CHANGES REQUIRED BELOW THIS LINE #####
 
@@ -287,7 +288,7 @@ find "$INPUT_DIR" -type f \( -name "*.pdf" -o -name "*.epub" -o -name "*.chm" -o
         # 4. Checks if the text extraction was successful:
         #    - Skips the file if the resulting text file is empty.
         # 5. Processes the extracted text:
-        #    - Reads the first 400 lines of the text.
+        #    - Reads the first n lines of the text.
         #    - Cleans the text by removing special characters, non-printable characters, and redundant spaces.
         #    - Limits the processed text to 26,000 characters.
         # 6. Prepares the extracted text for further processing (e.g., renaming).
@@ -330,12 +331,13 @@ find "$INPUT_DIR" -type f \( -name "*.pdf" -o -name "*.epub" -o -name "*.chm" -o
             continue
         fi
 
-        extracted_text=$(head -n 400 "$temp_file" | tr '"' ' ' | tr "'" " " | tr '\n' ' ' | tr '\r' ' ' | tr '\t' ' ' | tr '\\' ' ' | tr '/' ' ' | tr '$' ' ' | tr '^' ' ') >/dev/null 2>&1
+        extracted_text=$(head -n $EXTRACT_SENT_TO_LLM_LENGTH "$temp_file" | tr '"' ' ' | tr "'" " " | tr '\n' ' ' | tr '\r' ' ' | tr '\t' ' ' | tr '\\' ' ' | tr '/' ' ' | tr '$' ' ' | tr '^' ' ') >/dev/null 2>&1
         extracted_text=$(echo "$extracted_text" | sed "s/’/ /g" | sed 's/[^[:print:]]//g' | str replace "- -" " " | str replace '. . .' ' ' | str replace '....' ' ') >/dev/null 2>&1
         extracted_text=$(echo "$extracted_text" | tr -c '\40-\176' ' ' | sed 's/  */ /g' | sed 's/  */ /g' | str replace " ... " "." | str replace ": )" " " | str replace ") :" " " | str replace ",," " " | str replace ", . ," " " | str replace ", ," " " | str replace ". ." " " | str replace "  " " " | str replace "  " " " | str replace "  " " ") >/dev/null 2>&1
         extracted_text="${extracted_text:0:26000}"
         extracted_text=${extracted_text#\"}
         extracted_text=${extracted_text%\"}
+        # echo "Extracted text: $extracted_text"
         new_name=""
         to_skip=true
         check_blank=$(echo "$extracted_text" | tr -d ' ') >/dev/null 2>&1
@@ -390,8 +392,11 @@ find "$INPUT_DIR" -type f \( -name "*.pdf" -o -name "*.epub" -o -name "*.chm" -o
                 cmd+='\"\nIf you cannot find any of these explicitly, examine the content to see if you can identify the publication by some other means. '
                 cmd+='Return ONLY in this format: \"Title - Author(s) (Year) [ISBN]\". Only return ONE match, the most likely. Do NOT return more than one. '
                 cmd+='If you are unsure then return NA. If you do not obtain an ISBN by inspecting this text extract, please perform a web lookup '
-                cmd+='to try to determine it indirectly from other sources. If the information is not in English, French or Spanish, please perform a translation into English."'
-                cmd+='}], "temperature": 0.1, "max_tokens": 9000 '
+                cmd+='to try to determine it indirectly from other sources. If the information is not in English, French or Spanish, please perform a translation into English. '
+				cmd+='Pay special attention to volume numbers (if any), being sure to include the specific volume number of a series in the title. Do not return all volume names, just the one you have identified. '
+				cmd+='If the book has more than three authors, only return the first three followed by et al. '
+				cmd+='Please ensure that you return only characters that are legal in a Linux filename. "'
+                cmd+='}], "temperature": 0.3, "max_tokens": 90000 '
                 cmd+="}'"
                 echo "Executing command: $cmd" >>"$LOG_FILE"
 
