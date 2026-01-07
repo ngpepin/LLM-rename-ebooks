@@ -141,20 +141,19 @@ Sidecars are written next to each file (e.g., `report.pdf.json`) or into `-o` if
 1. Clone the repository:
    ```sh
 
-   git clone https://github.com/ngpepin/rename-ebooks.git
+   git clone https://github.com/ngpepin/LLM-rename-publications-RAG.git
 
    cd rename-ebooks
 
    ```
 
 2. Install dependencies:
-
-   ```sh
-
-
-   ```
-
-
+   
+- `jq`
+- `docker`
+- `unzip`
+- `poppler-utils`
+- `calibre`
 
 ## Usage
 
@@ -163,35 +162,20 @@ Sidecars are written next to each file (e.g., `report.pdf.json`) or into `-o` if
 ```bash
 ./rename-ebooks.sh [OPTIONS] -i /path/to/input -o /path/to/output
 ```
-
-### LLM-Based Renaming
-
-```bash
-
-./rename-using-llm.sh /path/to/books
-
-
-./rename-using-llm-langchain.py -i /path/to/input -o /path/to/output -c rename-using-llm.conf
-
-
-
 ### Fixing Matches
-
 ```sh
 ./fix-matches.sh [-i /path/to/input-directory -o /path/to/output-directory]
 ```
 
+### LLM-Based Renaming
+
+```bash
+./rename-using-llm.sh /path/to/books
+./rename-using-llm-langchain.py -i /path/to/input -o /path/to/output -c rename-using-llm.conf
+```
 ## Configuration
 
 See `config.json` and `.conf` files for options and API settings.
-
-## Dependencies
-
-- `jq`
-- `docker`
-- `unzip`
-- `poppler-utils`
-- `calibre`
 
 ## Contributing
 
