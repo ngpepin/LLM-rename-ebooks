@@ -29,7 +29,7 @@ flowchart LR
   rename-using-llm]
   D --> E[Semantic Filenames + Logs
   Renamed/ & logs/]
-  E --> F[Chunking
+  F[Chunking
   LangChain/Haystack]
   F --> G[Embedding
   OpenAI/Azure/HuggingFace]
@@ -40,7 +40,7 @@ flowchart LR
 ```
 
 - **Normalize/Convert:** Standardize formats to PDF where possible using provided `convert-*.sh` scripts for consistent downstream processing.
-- **Text Extraction:** Use `pdftotext` (Poppler) and Calibre’s `ebook-convert` to produce robust plaintext.
+- **Text Extraction:** Use `pdftotext` (based on Poppler) and `ebook-convert` (Calibre) to produce robust plaintext.
 - **LLM Metadata Extraction:** Derive semantic metadata (title, author, domain/topic, approximate date, summary) from content, not filesystem metadata.
 - **Semantic Filenames + Logs:** Create collision-free, descriptive filenames and structured logs for auditability and post-processing.
 - **Chunking & Embedding:** Apply windowing strategies (e.g., recursive character text splitter with overlap) and generate embeddings with your chosen model provider.
