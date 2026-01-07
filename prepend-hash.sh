@@ -1,4 +1,18 @@
 #!/bin/bash
+#
+# prepend-hash.sh
+#
+# This script renames all regular files in a specified directory by prepending a 24-character SHA-256 hash and a double underscore to each filename.
+#
+# Usage:
+#   ./prepend-hash.sh /path/to/directory
+#
+# For each file in the directory:
+#   - If the filename already starts with a 24-character hex hash followed by '__', it is skipped.
+#   - Otherwise, the script computes the SHA-256 hash of the file, takes the first 24 characters, and renames the file to '<hash>__<original_filename>'.
+#
+# Example:
+#   original.txt -> 1a2b3c4d5e6f7g8h9i0j1k2l__original.txt
 
 all_args="$*"
 DIRECTORY="$all_args"

@@ -1,4 +1,24 @@
 #!/bin/bash
+# prepend-namehash.sh
+#
+# This script renames all files in a given directory by prepending a hash (derived from the filename) to each filename.
+#
+# Steps:
+# 1. For each file in the directory, if it does not already start with a hash, compute a simhash of the filename and prepend it.
+# 2. After renaming, sorts the files and processes them to compute and print the decimal difference between the leading 6 hex digits of each file's hash and the previous file's hash.
+#
+# Usage:
+#   ./prepend-namehash.sh /path/to/directory
+#
+# Requirements:
+#   - Python3 with simhash module installed
+#   - bc (for hex/decimal math)
+#
+# Notes:
+#   - Only regular files are processed.
+#   - Files already starting with a 24-character hex hash and double underscore are skipped.
+#   - Hashes are computed using simhash on the filename.
+#   - The script is safe for filenames with spaces.
 
 all_args="$*"
 DIRECTORY="$all_args"

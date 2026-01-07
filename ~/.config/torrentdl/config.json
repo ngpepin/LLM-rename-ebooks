@@ -1,0 +1,27 @@
+{
+    "aggregate_same_magnet_links": true,
+    "exclude_search_delimiter": "::-",
+    "fetch_magnet_links_concurrence": 20,
+    "fetch_missing_magnet_links": true,
+    "history_max_length": 100,
+    "page_num_download": 1,
+    "pretty_json": false,
+    "request_timeout": 5,
+    "rpc_bind_address": "127.0.0.1",
+    "rpc_bind_port": 57000,
+    "rpc_pass": "",
+    "rpc_user": "",
+    "search_engines": [
+        "1337x",
+        "Lime",
+        "Nyaa",
+        "TPB",
+        "TD",
+        "ST",
+        "Glo",
+        "Torr2",
+        "YBT"
+    ],
+    "torrent_client_cmd": "add-magnet %s",
+    "use_exclude_search": true
+}
