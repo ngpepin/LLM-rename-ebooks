@@ -1,18 +1,20 @@
 
-# Rename Ebooks
+# LLM-Augmented Renaming of Publications - Ready for RAG applications
 
 ## Overview
 
-This project provides two main approaches for renaming and organizing ebooks:
+This project provides two main approaches for renaming and organizing publications:
 
 1. **Metadata-Based Renaming**: Uses traditional metadata extraction (title, author, ISBN) via `ebook-tools` and related scripts.
-2. **LLM-Based Renaming**: Uses a Language Model (LLM) API to extract metadata from ebook content and generate context-aware filenames, especially for files with poor or missing metadata.
+2. **LLM-Based Renaming**: Uses a Language Model (LLM) API to extract metadata from publication content and generate context-aware filenames, especially for files with poor or missing metadata.
 
-Supported formats: PDF, EPUB, CHM, MOBI.
+Supported formats: PDF, EPUB, CHM, MOBI.  
+
+**We have found this to be very useful for RAG pipelines requiring ingestion of publications (e.g., required for base domain knowledge or reflecting firm-specific research publications) that may contain missing or inconsistent metadata... and where file naming provides little or no insight re: content.**
 
 ## Features
 
-- Scans directories for supported ebook files.
+- Scans directories for supported publication files.
 - Extracts text using `pdftotext` or `ebook-convert`.
 - Sends extracted text to an LLM API for metadata extraction.
 - Renames files using the returned metadata, with cleaning and collision avoidance.
